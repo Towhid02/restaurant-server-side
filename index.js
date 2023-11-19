@@ -1,13 +1,23 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000;
 
 // middleware
+app.use(
+  cors({
+      origin: ['http://localhost:5173'],
+      credentials: true,
+  }),
+)
 app.use(cors());
 app.use(express.json()); 
+
+// custom middleware
+const verifyToken = async (req, res, next) => {
+}
 
 // console.log(DB_USER)
 // console.log(DB_PASS)
@@ -27,9 +37,8 @@ async function run() {
   try {
 
     const menuCollection = client.db('restaurantDB').collection('menu');
-    const breakfastCollection = client.db('restaurantDB').collection('breakfast');
-    const lunchCollection = client.db('restaurantDB').collection('lunch');
-    const dinnerCollection = client.db('restaurantDB').collection('dinner');
+    const categoriesCollection = client.db('restaurantDB').collection('categories');
+   
 
     app.post('/user', async (req, res) => {
       const user = req.body;
@@ -44,6 +53,19 @@ async function run() {
       res.send(result);
       })
 
+      app.get('/categories', async (req, res) => {
+        const cursor = categoriesCollection.find();
+        const result = await cursor.toArray();
+        res.send(result);
+        })
+
+      app.get('/menu/:id', async (req, res) => {
+        const id = req.params.id;
+        const query = {_id: new ObjectId(id)}
+        const result = await menuCollection.findOne(query);
+        res.send(result);
+        })
+
       app.get('/category/:category', async (req, res) => {
         const category = req.params.category;
         const query = {category:category}
@@ -51,37 +73,41 @@ async function run() {
         const result = await cursor.toArray(query);
         res.send(result);
         })
-
-    app.get('/breakfast', async (req, res) => {
-      const cursor = breakfastCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-      })
-      app.get('/breakfast/:id', async (req, res) => {
-        const id = req.params.id;
-        const query = {_id: new ObjectId(id)}
-        const result = await breakfastCollection.findOne(query);
-        res.send(result);
+      
+        app.post('/menu', async (req, res) => {
+          const newFood = req.body;
+          console.log(newFood);
+          const result = await menuCollection.insertOne(newFood);
+          res.send(result);
         })
 
-    app.get('/lunch', async (req, res) => {
-      const cursor = lunchCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-      })
-    app.get('/lunch/:id', async (req, res) => {
-    const id = req.params.id;
-    const query = {_id: new ObjectId(id)}
-    const result = await lunchCollection.findOne(query);
-    res.send(result);
-    })
-
-    app.get('/dinner', async (req, res) => {
-      const cursor = dinnerCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-      })
-
+        app.put('/menu/:id', async(req, res)=>{
+          const id = req.params.id;
+          const filter = { _id: new ObjectId(id)};
+          const options = {upsert: true};
+          const updatedFood = req.body
+          const updated = {
+            $set: {
+              name: updatedFood.name, 
+              category: updatedFood.category, 
+              quantity: updatedFood.quantity, 
+              chef: updatedFood.chef, 
+              origin: updatedFood.origin, 
+              price:updatedFood.price, 
+              image: updatedFood.image,
+            }
+          }
+          const result = await menuCollection.updateOne(filter, updated, options);
+          res.send(result);
+          
+        })
+      app.get('/category/:category', async (req, res) => {
+          const category = req.params.category;
+          const query = {category:category}
+          const cursor = menuCollection.find(query)
+          const result = await cursor.toArray(query);
+          res.send(result);
+          })
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection
