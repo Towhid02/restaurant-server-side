@@ -16,9 +16,6 @@ app.use(cors());
 app.use(express.json()); 
 
 // custom middleware
-const verifyToken = async (req, res, next) => {
-}
-
 // console.log(DB_USER)
 // console.log(DB_PASS)
 
@@ -38,7 +35,25 @@ async function run() {
 
     const menuCollection = client.db('restaurantDB').collection('menu');
     const categoriesCollection = client.db('restaurantDB').collection('categories');
+    const orderDb = client.db('orderDB')
    
+    app.post('/orders', async (req, res) => {
+      const {email, products} = req.body;
+     console.log(email, products);
+     const{_id, ...data} = products
+     const orderCollection = orderDb.collection(email)
+      const result = await orderCollection.insertOne(data);
+      res.send(result);
+  })
+
+  app.get('/orders/:email', async (req, res) => {
+    const email = req.params.email;
+    const query = {email: email}
+    const orderCollection = orderDb.collection(email)
+    const cursor = orderCollection.find()
+    const result = await cursor.toArray(query);
+    res.send(result);
+   })
 
     app.post('/user', async (req, res) => {
       const user = req.body;
@@ -88,7 +103,7 @@ async function run() {
           res.send(result)
         })
 
-        
+
         app.put('/menu/:id', async(req, res)=>{
           const id = req.params.id;
           const filter = { _id: new ObjectId(id)};
